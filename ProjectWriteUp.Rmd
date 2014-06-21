@@ -1,0 +1,41 @@
+Practical Machine Learning Project Write Up
+========================================================
+The model was built using the "Random Forest" method in the caret package.  I choose this method because it is often very accurate and it is usually one of the top performing algorithms in prediction contests.
+Cross validation was used to ensure overfitting didn't occur.  The process used was as follows:  The training data set (Train) set was split into two data sets:  TrainSub and TestSub.  75% of the training data set (Train) was used for resulting dataset called TrainSub.  25% of the training data set (Train) was used for the resulting dataset called TestSub.   The Random Forest model was built only with the TrainSub dataset.  Then the model was evaluated using the TestSub dataset.  The confusion matrix and statistics that was obtained from the results of the TestSub dataset is given below:
+
+Confusion Matrix and Statistics
+
+          Reference
+Prediction    A    B    C    D    E
+         A 1367    1    0    0    0
+         B    0  928    2    0    0
+         C    0    0  836    0    0
+         D    0    0    0  786    0
+         E    0    0    0    0  882
+
+Overall Statistics
+                                          
+               Accuracy : 0.9994          
+                 95% CI : (0.9982, 0.9999)
+    No Information Rate : 0.2847          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.9992          
+ Mcnemar's Test P-Value : NA              
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            1.0000   0.9989   0.9976   1.0000   1.0000
+Specificity            0.9997   0.9995   1.0000   1.0000   1.0000
+Pos Pred Value         0.9993   0.9978   1.0000   1.0000   1.0000
+Neg Pred Value         1.0000   0.9997   0.9995   1.0000   1.0000
+Prevalence             0.2847   0.1935   0.1745   0.1637   0.1837
+Detection Rate         0.2847   0.1933   0.1741   0.1637   0.1837
+Detection Prevalence   0.2849   0.1937   0.1741   0.1637   0.1837
+Balanced Accuracy      0.9999   0.9992   0.9988   1.0000   1.0000
+
+
+Based on these results, the expected out of sample error is .0006 (1-accuracy) =  (1-0.9994)
+
+

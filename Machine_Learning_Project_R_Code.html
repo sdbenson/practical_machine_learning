@@ -1,0 +1,107 @@
+
+<div class="chunk" id="unnamed-chunk-1"><div class="rcode"><div class="source"><pre class="knitr r"><span class="hl com">#Load the required libraries</span>
+<span class="hl kwd">library</span><span class="hl std">(caret)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## Loading required package: lattice
+## Loading required package: ggplot2
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(randomForest)</span>
+</pre></div>
+<div class="message"><pre class="knitr r">## randomForest 4.6-7
+## Type rfNews() to see new features/changes/bug fixes.
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl kwd">library</span><span class="hl std">(e1071)</span>
+
+<span class="hl com">#Read in the training and testing data</span>
+<span class="hl std">Train</span><span class="hl kwb">=</span><span class="hl kwd">read.csv</span><span class="hl std">(</span><span class="hl str">&quot;pml-training.csv&quot;</span><span class="hl std">,</span><span class="hl kwc">header</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">,</span><span class="hl kwc">stringsAsFactors</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">)</span>
+<span class="hl std">Test</span><span class="hl kwb">=</span><span class="hl kwd">read.csv</span><span class="hl std">(</span><span class="hl str">&quot;pml-testing.csv&quot;</span><span class="hl std">,</span><span class="hl kwc">header</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">,</span><span class="hl kwc">stringsAsFactors</span><span class="hl std">=</span><span class="hl num">TRUE</span><span class="hl std">)</span>
+
+
+<span class="hl com">#Initialize dummy variables </span>
+<span class="hl std">NAsum</span><span class="hl kwb">=</span><span class="hl num">999999</span>
+<span class="hl std">Blanksum</span><span class="hl kwb">=</span><span class="hl num">999999</span>
+
+<span class="hl com">#After evaluating the Train dataset, it was noticed that many variables were blank, NA, or mostly blank </span>
+<span class="hl com">#(with the exception of when variable new_window =&quot;yes&quot;)</span>
+
+<span class="hl com">#The following code:</span>
+<span class="hl com">#1.  Removes data where new_window==&quot;yes&quot;</span>
+<span class="hl com">#2.  Removes columns with all NA values</span>
+<span class="hl com">#3.  Removes columns with all blank values</span>
+<span class="hl std">Train</span><span class="hl kwb">=</span><span class="hl kwd">subset</span><span class="hl std">(Train,new_window</span><span class="hl opt">==</span><span class="hl str">&quot;no&quot;</span><span class="hl std">)</span>
+
+
+<span class="hl kwa">for</span> <span class="hl std">(i</span> <span class="hl kwa">in</span> <span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">length</span><span class="hl std">(</span><span class="hl kwd">colnames</span><span class="hl std">(Train))){</span>
+  <span class="hl std">NAsum[i]</span><span class="hl kwb">=</span><span class="hl kwd">sum</span><span class="hl std">(</span><span class="hl kwd">is.na</span><span class="hl std">(Train[,i]))</span>
+<span class="hl std">}</span>
+
+<span class="hl std">ValidColumns</span><span class="hl kwb">=</span><span class="hl std">NAsum</span><span class="hl opt">==</span><span class="hl num">0</span>
+<span class="hl std">Train</span><span class="hl kwb">=</span><span class="hl std">Train[,ValidColumns]</span>
+
+<span class="hl kwa">for</span> <span class="hl std">(i</span> <span class="hl kwa">in</span> <span class="hl num">1</span><span class="hl opt">:</span><span class="hl kwd">length</span><span class="hl std">(</span><span class="hl kwd">colnames</span><span class="hl std">(Train))){</span>
+  <span class="hl std">Blanksum[i]</span><span class="hl kwb">=</span><span class="hl kwd">sum</span><span class="hl std">(Train[,i]</span><span class="hl opt">==</span><span class="hl str">&quot;&quot;</span><span class="hl std">)</span>
+<span class="hl std">}</span>
+
+<span class="hl std">ValidColumns2</span><span class="hl kwb">=</span><span class="hl std">Blanksum</span><span class="hl opt">==</span><span class="hl num">0</span>
+<span class="hl std">Train</span><span class="hl kwb">=</span><span class="hl std">Train[,ValidColumns2]</span>
+<span class="hl com">##########################################################</span>
+
+<span class="hl com">#The first column of the training dataset is removed because the training set was grouped by classe and</span>
+<span class="hl com"># the variable X perfectly correlates with classe. </span>
+
+<span class="hl std">Train</span><span class="hl kwb">=</span><span class="hl std">Train[,</span><span class="hl opt">-</span><span class="hl num">1</span><span class="hl std">]</span>
+
+<span class="hl com">#Create training and testing subgroups from the Train dataset for cross validation</span>
+<span class="hl std">inTrainSub</span><span class="hl kwb">=</span><span class="hl kwd">createDataPartition</span><span class="hl std">(</span><span class="hl kwc">y</span><span class="hl std">=Train</span><span class="hl opt">$</span><span class="hl std">classe,</span><span class="hl kwc">p</span><span class="hl std">=</span><span class="hl num">.75</span><span class="hl std">,</span><span class="hl kwc">list</span><span class="hl std">=</span><span class="hl num">FALSE</span><span class="hl std">)</span>
+<span class="hl std">TrainSub</span><span class="hl kwb">=</span><span class="hl std">Train[inTrainSub,]</span>
+<span class="hl std">TestSub</span><span class="hl kwb">=</span><span class="hl std">Train[</span><span class="hl opt">-</span><span class="hl std">inTrainSub,]</span>
+
+<span class="hl com">#Fit a model using &quot;Random Forest&quot; method </span>
+<span class="hl std">modFit</span><span class="hl kwb">=</span><span class="hl kwd">train</span><span class="hl std">(classe</span><span class="hl opt">~</span><span class="hl std">.,</span><span class="hl kwc">data</span><span class="hl std">=TrainSub,</span><span class="hl kwc">method</span><span class="hl std">=</span><span class="hl str">&quot;rf&quot;</span><span class="hl std">)</span>
+<span class="hl std">finalMod</span><span class="hl kwb">=</span><span class="hl std">modFit</span><span class="hl opt">$</span><span class="hl std">finalModel</span>
+
+<span class="hl com">#Predict on the TestSub dataset and create confusion matrix to check accuracy and overfitting (out of sample error)</span>
+<span class="hl std">pred</span><span class="hl kwb">=</span><span class="hl kwd">predict</span><span class="hl std">(modFit,TestSub)</span>
+<span class="hl kwd">confusionMatrix</span><span class="hl std">(pred,TestSub</span><span class="hl opt">$</span><span class="hl std">classe)</span>
+</pre></div>
+<div class="output"><pre class="knitr r">## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1367    1    0    0    0
+##          B    0  928    1    0    0
+##          C    0    0  837    2    0
+##          D    0    0    0  784    0
+##          E    0    0    0    0  882
+## 
+## Overall Statistics
+##                                     
+##                Accuracy : 0.999     
+##                  95% CI : (0.998, 1)
+##     No Information Rate : 0.285     
+##     P-Value [Acc > NIR] : <2e-16    
+##                                     
+##                   Kappa : 0.999     
+##  Mcnemar's Test P-Value : NA        
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity             1.000    0.999    0.999    0.997    1.000
+## Specificity             1.000    1.000    0.999    1.000    1.000
+## Pos Pred Value          0.999    0.999    0.998    1.000    1.000
+## Neg Pred Value          1.000    1.000    1.000    1.000    1.000
+## Prevalence              0.285    0.193    0.175    0.164    0.184
+## Detection Rate          0.285    0.193    0.174    0.163    0.184
+## Detection Prevalence    0.285    0.193    0.175    0.163    0.184
+## Balanced Accuracy       1.000    0.999    0.999    0.999    1.000
+</pre></div>
+<div class="source"><pre class="knitr r"><span class="hl com">#Predict classe on the Test dataset</span>
+<span class="hl std">predTest</span><span class="hl kwb">=</span><span class="hl kwd">as.character</span><span class="hl std">(</span><span class="hl kwd">predict</span><span class="hl std">(modFit,Test))</span>
+<span class="hl std">predTest</span>
+</pre></div>
+<div class="output"><pre class="knitr r">##  [1] "B" "A" "B" "A" "A" "E" "D" "B" "A" "A" "B" "C" "B" "A" "E" "E" "A"
+## [18] "B" "B" "B"
+</pre></div>
+</div></div>
+
